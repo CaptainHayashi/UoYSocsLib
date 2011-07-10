@@ -244,12 +244,14 @@ class UoY_Date
      */
     public function toString()
     {
-        return ($this->getDayName()
-                . ' Week ' . $this->getWeek()
-                . ', ' . $this->getTermName()
-                . ' ' . $this->getYear() 
-                . '/' . (($this->getYear() + 1) % 100)
-                );
+        return sprintf(
+            '%s Week %u, %s %u/%02u',
+            $this->getDayName(),
+            $this->getWeek(),
+            $this->getTermName(),
+            $this->getYear(), 
+            (($this->getYear() + 1) % 100)
+        );
     }
 }
 ?>
