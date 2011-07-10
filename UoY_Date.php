@@ -21,13 +21,24 @@ require_once 'UoY_DateConstants.php';
 /**
  * University date object.
  * 
+ * This class extends PHP's standard Unix timestamp-based date system by
+ * providing a container for dates specified in the Year/Term/Week/Day system
+ * used by the University of York.
+ * 
+ * Such dates may then be manipulated by systems such as the UoY_DateHandler 
+ * object in a way that is more natural than manipulating timestamps alone.
+ * 
+ * This object is primarily intended to be created from timestamps by objects
+ * such as the UoY_DateHandler implementation also provided in this library.
+ * 
  * @category UoY
  * @package  UoY
  * 
  * @author   Matt Windsor <mattwindsor@btinternet.com>
+ * @author   Gareth Andrew Lloyd <gareth@ignition-web.co.uk>
  * 
  * @license  ? ?
- * @link     github.com/UniversityRadioYork/University-of-York-Society-Common-Library
+ * @link     https://github.com/UniversityRadioYork/UoYSocsLib
  */
 class UoY_Date
 {
@@ -45,7 +56,8 @@ class UoY_Date
      * @param boolean $isBreak Whether or not the date belongs to a break
      *                         instead of a term.
      * @param integer $week    The week of the term or break.
-     * @param integer $epoch   The unix timestamp.
+     * @param integer $epoch   The Unix timestamp equivalent of the date.
+     *                         This is required for day-level functions.
      * 
      * @throws InvalidArgumentException if the types are incorrect.
      * @throws OutOfBoundsException     if any variable is outside its 
@@ -60,8 +72,8 @@ class UoY_Date
             throw new InvalidArgumentException('Term must be an integer.');
         } else if (is_integer($week) === false) {
             throw new InvalidArgumentException('Week must be an integer.');
-        //} else if (is_integer($day) === false) {
-        //    throw new InvalidArgumentException('Day must be an integer.');
+        } else if (is_integer($epoch) === false) {
+            throw new InvalidArgumentException('Epoch must be an integer.');
         } else if (is_bool($isBreak) === false) {
             throw new InvalidArgumentException('isBreak must be an boolean.');
         }
@@ -83,11 +95,9 @@ class UoY_Date
         if ($week < 1) {
             throw new OutOfBoundsException('Week must be positive.');
         }
-        //if ($day < UoY_DateConstants::DAY_LOWER_BOUND) {
-        //    throw new OutOfBoundsException('Day ID is too low.');
-        //} else if ($day > UoY_DateConstants::DAY_UPPER_BOUND) {
-        //    throw new OutOfBoundsException('Day ID is too high.');
-        //}
+        if ($epoch < 0) {
+            throw new OutOfBoundsException('Epoch must not be negative.');
+        }
         
         $this->year = $year;
         $this->term = $term;
@@ -216,6 +226,11 @@ class UoY_Date
         }
     }
 
+    /**
+     * Gets the epoch, or Unix timestamp, equivalent of this date.
+     * 
+     * @return integer The epoch of this date. 
+     */
     public function getEpoch() 
     {
         return $this->epoch;

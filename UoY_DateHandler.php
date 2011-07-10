@@ -24,6 +24,12 @@ date_default_timezone_set('Europe/London');
 /**
  * Class for handling University of York term dates.
  * 
+ * This class provides a series of static functions that facilitate the 
+ * creation and manipulation of dates in the university's Year/Term/Week/Day 
+ * format.
+ * 
+ * It relies on the presence of term start information.
+ * 
  * @category UoY
  * @package  UoY
  * 
@@ -31,11 +37,10 @@ date_default_timezone_set('Europe/London');
  * @author   Matt Windsor <mattwindsor@btinternet.com>
  * 
  * @license  ? ?
- * @link     github.com/UniversityRadioYork/University-of-York-Society-Common-Library
+ * @link     https://github.com/UniversityRadioYork/UoYSocsLib
  */
 class UoY_DateHandler
-{   
-
+{
     /**
      * Checks whether or not the given academic year exists in the system.
      * 
@@ -53,14 +58,15 @@ class UoY_DateHandler
             return false; //cache file missing and can't be made
         }
         $tmpxml = UoY_Cache::cacheHandle();
-        $xmlRes = UoY_Cache::getYearResource($tmpxml,$year);
+        $xmlRes = UoY_Cache::getYearResource($tmpxml, $year);
         if (($xmlRes == array()) && $update) {
             UoY_Cache::updateCache();
-            $xmlRes = UoY_Cache::getYearResource($tmpxml,$year);
+            $xmlRes = UoY_Cache::getYearResource($tmpxml, $year);
         }
         return $xmlRes != array(); //no year exist in xml even after update
     }
 
+    
     /**
      * Returns the academic year of the given date.
      * 
@@ -74,6 +80,7 @@ class UoY_DateHandler
         // assumption 01-Sept is the earliest academic year start
         return @date("Y", $date - @strtotime("1st September 1970"));
     }
+    
     
     /**
      * Floors the given date string to the previous Monday. (?)
@@ -93,6 +100,7 @@ class UoY_DateHandler
         }
     }
 
+    
     /**
      * Converts a date in Unix timestamp format to the format used by the
      * University of York.
@@ -108,7 +116,7 @@ class UoY_DateHandler
             return false;
         }
         $tmpxml = UoY_Cache::cacheHandle();
-        $xmlRes = UoY_Cache::getYearResource($tmpxml,$year);
+        $xmlRes = UoY_Cache::getYearResource($tmpxml, $year);
         $feature[] = @strtotime("1st September $year");//inclusive
         $feature[] = @strtotime("1st September " . ($year + 1));//exclusive
         foreach ($xmlRes[0]->term as $t) {
@@ -163,9 +171,11 @@ class UoY_DateHandler
         );
     }
 
+    
     /**
      * Function used to test the date handler.
      * 
+     * @todo Unit test?
      * @return nothing.
      */
     public static function test()
@@ -181,7 +191,6 @@ class UoY_DateHandler
             $day = @strtotime(@date("Y-m-d", $day) . " +1 day");
         }
     }
-
 }
 
 ?>
