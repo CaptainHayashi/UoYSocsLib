@@ -194,7 +194,7 @@ class UoY_DateHandler
      */
     public static function addDayOffset(UoY_Date $date, $offset)
     {
-        return $this->addOffset($date, $offset, 'days');
+        return self::addOffset($date, $offset, 'days');
     }
     
     
@@ -218,7 +218,7 @@ class UoY_DateHandler
      */
     public static function addWeekOffset(UoY_Date $date, $offset)
     {
-        return $this->addOffset($date, $offset, 'weeks');
+        return self::addOffset($date, $offset, 'weeks');
     }
     
     
@@ -255,7 +255,7 @@ class UoY_DateHandler
         $offsetString = sprintf('%+u %s', $oldTimestamp, $unit);
         $newTimestamp = strtotime($offsetString, $oldTimestamp);
         
-        return $this->termInfo($newTimestamp);
+        return self::termInfo($newTimestamp);
     }
     
     
