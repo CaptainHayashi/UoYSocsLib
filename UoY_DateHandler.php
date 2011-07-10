@@ -40,67 +40,7 @@ date_default_timezone_set('Europe/London');
  * @link     https://github.com/UniversityRadioYork/UoYSocsLib
  */
 class UoY_DateHandler
-{
-    /**
-     * Checks whether or not the given academic year exists in the system.
-     * 
-     * Data for the year existing in the system is a necessary prerequisite
-     * for the 
-     * 
-     * @param integer $year   The year to look up.
-     * @param boolean $update If true, the system will update itself. (?)
-     * 
-     * @return boolean Whether or not the year exists in the system.
-     */
-    public static function yearExists($year, $update = false)
-    {
-        if (!UoY_Cache::cacheExists()) {
-            return false; //cache file missing and can't be made
-        }
-        $tmpxml = UoY_Cache::cacheHandle();
-        $xmlRes = UoY_Cache::getYearResource($tmpxml, $year);
-        if (($xmlRes == array()) && $update) {
-            UoY_Cache::updateCache();
-            $xmlRes = UoY_Cache::getYearResource($tmpxml, $year);
-        }
-        return $xmlRes != array(); //no year exist in xml even after update
-    }
-
-    
-    /**
-     * Returns the academic year of the given date.
-     * 
-     * @param integer $date The date, as a Unix timestamp.
-     * 
-     * @return integer The academic year of the given date, as defined as the
-     *                 calendar year upon which Monday Week 1 Autumn falls.
-     */
-    public static function yearNumber($date)
-    {
-        // assumption 01-Sept is the earliest academic year start
-        return @date("Y", $date - @strtotime("1st September 1970"));
-    }
-    
-    
-    /**
-     * Floors the given date string to the previous Monday. (?)
-     * 
-     * @param string $datestr A string representing the date.
-     * 
-     * @return integer A Unix timestamp representing the floored date. 
-     */
-    protected static function floorMonday($datestr)
-    {
-        $prevMon = @strtotime("last Monday" . $datestr);
-        $m1week = @strtotime($datestr . " -1 week");
-        if ($prevMon == $m1week) {
-            return @strtotime($datestr);
-        } else {
-            return $prevMon;
-        }
-    }
-
-    
+{ 
     /**
      * Converts a date in Unix timestamp format to the format used by the
      * University of York.
@@ -189,6 +129,66 @@ class UoY_DateHandler
                 echo self::termInfo($day)->toString() . "\n";
             }
             $day = @strtotime(@date("Y-m-d", $day) . " +1 day");
+        }
+    }
+    
+    
+    /**
+     * Checks whether or not the given academic year exists in the system.
+     * 
+     * Data for the year existing in the system is a necessary prerequisite
+     * for the 
+     * 
+     * @param integer $year   The year to look up.
+     * @param boolean $update If true, the system will update itself. (?)
+     * 
+     * @return boolean Whether or not the year exists in the system.
+     */
+    public static function yearExists($year, $update = false)
+    {
+        if (!UoY_Cache::cacheExists()) {
+            return false; //cache file missing and can't be made
+        }
+        $tmpxml = UoY_Cache::cacheHandle();
+        $xmlRes = UoY_Cache::getYearResource($tmpxml, $year);
+        if (($xmlRes == array()) && $update) {
+            UoY_Cache::updateCache();
+            $xmlRes = UoY_Cache::getYearResource($tmpxml, $year);
+        }
+        return $xmlRes != array(); //no year exist in xml even after update
+    }
+
+    
+    /**
+     * Returns the academic year of the given date.
+     * 
+     * @param integer $date The date, as a Unix timestamp.
+     * 
+     * @return integer The academic year of the given date, as defined as the
+     *                 calendar year upon which Monday Week 1 Autumn falls.
+     */
+    public static function yearNumber($date)
+    {
+        // assumption 01-Sept is the earliest academic year start
+        return @date("Y", $date - @strtotime("1st September 1970"));
+    }
+    
+    
+    /**
+     * Floors the given date string to the previous Monday. (?)
+     * 
+     * @param string $datestr A string representing the date.
+     * 
+     * @return integer A Unix timestamp representing the floored date. 
+     */
+    protected static function floorMonday($datestr)
+    {
+        $prevMon = @strtotime("last Monday" . $datestr);
+        $m1week = @strtotime($datestr . " -1 week");
+        if ($prevMon == $m1week) {
+            return @strtotime($datestr);
+        } else {
+            return $prevMon;
         }
     }
 }
