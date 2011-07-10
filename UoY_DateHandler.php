@@ -175,6 +175,91 @@ class UoY_DateHandler
     
     
     /**
+     * Adds a given offset, in days, to a university date.
+     * 
+     * This function effectively brings the given date forwards by the given 
+     * number of days.  As one would expect, a negative number puts the given
+     * date backwards.
+     * 
+     * @param UoY_Date $date   The date to which the offset is to be added.
+     * @param integer  $offset The offset, in days, to be added to the date.
+     *                         The offset may be negative, in which case the
+     *                         offset is subtracted from the date as expected.
+     * 
+     * @return UoY_Date A date object representing the inputted date with the
+     *                  offset added or subtracted.  This is not necessarily
+     *                  the same object instance as the inputted object.
+     * 
+     * @throw InvalidArgumentException if the offset is not an integer.
+     */
+    public static function addDayOffset(UoY_Date $date, $offset)
+    {
+        return $this->addOffset($date, $offset, 'days');
+    }
+    
+    
+    /**
+     * Adds a given offset, in weeks, to a university date.
+     * 
+     * This function effectively brings the given date forwards by the given 
+     * number of weeks.  As one would expect, a negative number puts the given
+     * date backwards.
+     * 
+     * @param UoY_Date $date   The date to which the offset is to be added.
+     * @param integer  $offset The offset, in weeks, to be added to the date.
+     *                         The offset may be negative, in which case the
+     *                         offset is subtracted from the date as expected.
+     * 
+     * @return UoY_Date A date object representing the inputted date with the
+     *                  offset added or subtracted.  This is not necessarily
+     *                  the same object instance as the inputted object.
+     * 
+     * @throw InvalidArgumentException if the offset is not an integer.
+     */
+    public static function addWeekOffset(UoY_Date $date, $offset)
+    {
+        return $this->addOffset($date, $offset, 'weeks');
+    }
+    
+    
+    /**
+     * Adds a given offset, in weeks, to a university date.
+     * 
+     * This function effectively brings the given date forwards by the given 
+     * number of weeks.  As one would expect, a negative number puts the given
+     * date backwards.
+     * 
+     * @param UoY_Date $date   The date to which the offset is to be added.
+     * @param integer  $offset The offset, in weeks, to be added to the date.
+     *                         The offset may be negative, in which case the
+     *                         offset is subtracted from the date as expected.
+     * @param string   $unit   The name of the unit; this must be a plural.
+     *                         Examples include 'days' and 'weeks'.
+     * 
+     * @return UoY_Date A date object representing the inputted date with the
+     *                  offset added or subtracted.  This is not necessarily
+     *                  the same object instance as the inputted object.
+     * 
+     * @throw InvalidArgumentException if the offset is not an integer, or the
+     *                                 unit is not a string.
+     */  
+    protected static function addOffset(UoY_Date $date, $offset, $unit)
+    {
+        if (is_integer($offset)) {
+            throw new InvalidArgumentException('Offset must be an integer.');
+        } else if (is_string($unit)) {
+            throw new InvalidArgumentException('Unit not a string.');
+        }
+        
+        $oldTimestamp = $date->getEpoch();
+        $offsetString = sprintf('%+u %s', $oldTimestamp, $unit);
+        $newTimestamp = strtotime($offsetString, $oldTimestamp);
+        
+        return $this->termInfo($newTimestamp);
+    }
+    
+    
+    /**
      * Floors the given date string to the previous Monday. (?)
      * 
      * @param string $datestr A string representing the date.
