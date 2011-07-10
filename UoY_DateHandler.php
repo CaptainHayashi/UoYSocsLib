@@ -245,9 +245,9 @@ class UoY_DateHandler
      */  
     protected static function addOffset(UoY_Date $date, $offset, $unit)
     {
-        if (is_integer($offset)) {
+        if (is_integer($offset) === false) {
             throw new InvalidArgumentException('Offset must be an integer.');
-        } else if (is_string($unit)) {
+        } else if (is_string($unit) === false) {
             throw new InvalidArgumentException('Unit not a string.');
         }
         
