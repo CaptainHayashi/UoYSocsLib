@@ -252,7 +252,7 @@ class UoY_DateHandler
         }
         
         $oldTimestamp = $date->getEpoch();
-        $offsetString = sprintf('%+u %s', $oldTimestamp, $unit);
+        $offsetString = sprintf('%+u %s', $offset, $unit);
         $newTimestamp = strtotime($offsetString, $oldTimestamp);
         
         return self::termInfo($newTimestamp);
