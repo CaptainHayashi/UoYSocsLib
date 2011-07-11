@@ -42,11 +42,22 @@ require_once 'UoY_DateConstants.php';
  */
 class UoY_Date
 {
+    // Local constants
+   
+    // -- Options to toString
+    /** Omit the day from the string. */
+    const STRING_NO_DAY = 1;
+    
+    // -- Options to toQueryString
+    /** Omit the day from the query string. */
+    const QUERY_STRING_NO_DAY = 1;
+    
+    
     protected $year;
     protected $term;
     protected $isBreak;
     protected $week;
-    protected $epoch;
+    protected $day;
     
     /**
      * Constructs a new date.
@@ -56,14 +67,14 @@ class UoY_Date
      * @param boolean $isBreak Whether or not the date belongs to a break
      *                         instead of a term.
      * @param integer $week    The week of the term or break.
-     * @param integer $epoch   The Unix timestamp equivalent of the date.
-     *                         This is required for day-level functions.
+     * @param integer $day     The weekday of the date; usable values may be
+     *                         found in UoY_DateConstants.
      * 
      * @throws InvalidArgumentException if the types are incorrect.
      * @throws OutOfBoundsException     if any variable is outside its 
      *                                  expected range.
      */
-    public function __construct($year, $term, $isBreak, $week, $epoch)
+    public function __construct($year, $term, $isBreak, $week, $day)
     {
         // Type checks
         if (is_integer($year) === false) {
@@ -72,8 +83,8 @@ class UoY_Date
             throw new InvalidArgumentException('Term must be an integer.');
         } else if (is_integer($week) === false) {
             throw new InvalidArgumentException('Week must be an integer.');
-        } else if (is_integer($epoch) === false) {
-            throw new InvalidArgumentException('Epoch must be an integer.');
+        } else if (is_integer($day) === false) {
+            throw new InvalidArgumentException('Day must be an integer.');
         } else if (is_bool($isBreak) === false) {
             throw new InvalidArgumentException('isBreak must be an boolean.');
         }
@@ -95,15 +106,17 @@ class UoY_Date
         if ($week < 1) {
             throw new OutOfBoundsException('Week must be positive.');
         }
-        if ($epoch < 0) {
-            throw new OutOfBoundsException('Epoch must not be negative.');
+        if ($day < UoY_DateConstants::DAY_LOWER_BOUND) {
+            throw new OutOfBoundsException('Day ID is too low.');
+        } else if ($day > UoY_DateConstants::DAY_UPPER_BOUND) {
+            throw new OutOfBoundsException('Day ID is too high.');
         }
         
         $this->year = $year;
         $this->term = $term;
         $this->isBreak = $isBreak;
         $this->week = $week;
-        $this->epoch = $epoch;
+        $this->day = $day;
     }
     
     /**
@@ -196,7 +209,7 @@ class UoY_Date
      */
     public function getDay()
     {
-        return intval(date('N', $this->epoch));
+        return $this->day;
     }
     
     /**
@@ -206,7 +219,7 @@ class UoY_Date
      */
     public function getDayName()
     {
-        switch ($this->getDay()) {
+        switch ($this->day) {
         case UoY_DateConstants::DAY_MONDAY:
             return 'Monday';
         case UoY_DateConstants::DAY_TUESDAY:
@@ -225,33 +238,96 @@ class UoY_Date
             throw new LogicException('Invalid day stored in date.');
         }
     }
-
-    /**
-     * Gets the epoch, or Unix timestamp, equivalent of this date.
-     * 
-     * @return integer The epoch of this date. 
-     */
-    public function getEpoch() 
-    {
-        return $this->epoch;
-    }
+    
     
     /**
      * Gets a string representation of the date.
      * 
+     * @param array $options An optional array of options, as specified in the
+     *                       UoY_Date::STRING_xxx constants.
+     * 
      * @return string The string representation, which is always of the format
-     * '{DAY NAME} Week {WEEK}, {TERM NAME} {YEAR}/{YEAR + 1}'.
+     * '{DAY NAME} Week {WEEK}, {TERM NAME} {YEAR}/{YEAR + 1}' excepting if
+     * the option STRING_NO_DAY is passed, in which case {DAY NAME} is omitted.
      */
-    public function toString()
+    public function toString(array $options = array())
     {
+        $format = '';
+        if (in_array(self::STRING_NO_DAY, $options) === false) {
+            $format .= sprintf('%s ', $this->getDayName()); 
+        }
+        $format .= 'Week %u, %s %u/%02u';
+        
         return sprintf(
-            '%s Week %u, %s %u/%02u',
-            $this->getDayName(),
+            $format,
             $this->getWeek(),
             $this->getTermName(),
             $this->getYear(), 
             (($this->getYear() + 1) % 100)
         );
+    }
+    
+    /**
+     * Gets a string representation of the date, omitting the day.
+     * 
+     * This is a convenience method wrapping around toQueryString for the
+     * benefit of template engines that do not support passing parameters.
+     * 
+     * @return string The query string representation, as a set of 
+     *                string-string mappings concatenated into one string with
+     *                ampersands separating each.  The initial question mark is
+     *                omitted such that the output can be added to an existing
+     *                query string.
+     */
+    public function toStringWithoutDay()
+    {
+        return $this->toString(array(self::QUERY_STRING_NO_DAY));
+    }
+    
+    
+    /**
+     * Gets a query string representation of the date.
+     * 
+     * @param array $options An optional array of options, as specified in the
+     *                       UoY_Date::QUERY_STRING_xxx constants.
+     * 
+     * @return string The query string representation, as a set of 
+     *                string-string mappings concatenated into one string with
+     *                ampersands separating each.  The initial question mark is
+     *                omitted such that the output can be added to an existing
+     *                query string.
+     */
+    public function toQueryString(array $options = array())
+    {
+        $format = 'year=%u&term=%u&inbreak=%s&week=%u';
+        if (in_array(self::QUERY_STRING_NO_DAY, $options) === false) {
+            $format .= sprintf('&day=%u', $this->getDay()); 
+        }
+        
+        return sprintf(
+            $format,
+            $this->getYear(),
+            $this->getTerm(),
+            ($this->isInBreak() ? 'true' : 'false'),
+            $this->getWeek()
+        );
+    }
+    
+    /**
+     * Gets a query string, omitting the day.
+     * 
+     * This is a convenience method wrapping around toQueryString for the
+     * benefit of template engines that do not support passing parameters.
+     * 
+     * @return string The query string representation, as a set of 
+     *                string-string mappings concatenated into one string with
+     *                ampersands separating each.  The initial question mark is
+     *                omitted such that the output can be added to an existing
+     *                query string.
+     */
+    public function toQueryStringWithoutDay()
+    {
+        return $this->toQueryString(array(self::QUERY_STRING_NO_DAY));
     }
 }
 ?>

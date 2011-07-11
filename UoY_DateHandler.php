@@ -40,7 +40,7 @@ date_default_timezone_set('Europe/London');
  * @link     https://github.com/UniversityRadioYork/UoYSocsLib
  */
 class UoY_DateHandler
-{ 
+{
     /**
      * Converts a date in Unix timestamp format to the format used by the
      * University of York.
@@ -80,9 +80,7 @@ class UoY_DateHandler
         //5 - term 3
         //6 - $year summer break
         if ($term != 0) {
-            $relativetoterm = $date - $feature[$term];
-            $relativetoterm /= 60 * 60 * 24 * 7;
-            $week = (int) $relativetoterm + 1;
+            $week = self::getWeekDifference($date, $feature[ $term ]) + 1;
         } else {
             $start = @strtotime("31st August " . $year);
             $weekdayoffset = @strtotime("last Monday", $start);
@@ -107,10 +105,44 @@ class UoY_DateHandler
             intval($termnum) === 0 ? intval($breaknum) : intval($termnum),
             (intval($termnum) === 0), // Whether or not this is a break
             intval($weeknum),
-            intval($date) 
+            intval(date('N', $date)) 
         );
     }
 
+    
+    /**
+     * Converts a date to a Unix timestamp.
+     * 
+     * @param UoY_Date $date The date to convert to a Unix timestamp.
+     * 
+     * @return integer A Unix timestamp expressing midnight on the day
+     *                 represented by the given date object.
+     */
+    public static function timestampOfDate(UoY_Date $date)
+    {
+        if ($date->isInBreak()) {
+            $start = self::getMondayOfBreakStart(
+                $date->getTerm(),
+                $date->getYear()
+            );
+        } else {
+            $start = self::getMondayOfTermStart(
+                $date->getTerm(),
+                $date->getYear()
+            );
+        }
+        
+        /* Offset the starting timestamp with the number of weeks and days
+         * since the starting timestamp.
+         */
+        $offsetString = sprintf(
+            '+%u weeks %u days',
+            $date->getWeek() - 1,
+            $date->getDay() - 1
+        );
+        return strtotime($offsetString, $start);
+    }
+    
     
     /**
      * Function used to test the date handler.
@@ -251,7 +283,8 @@ class UoY_DateHandler
             throw new InvalidArgumentException('Unit not a string.');
         }
         
-        $oldTimestamp = $date->getEpoch();
+        // Convert to timestamp so we can leverage PHP's offset functionality.
+        $oldTimestamp = self::timestampOfDate($date);
         $offsetString = sprintf('%+u %s', $offset, $unit);
         $newTimestamp = strtotime($offsetString, $oldTimestamp);
         
@@ -275,7 +308,160 @@ class UoY_DateHandler
         } else {
             return $prevMon;
         }
+    }   
+    
+    
+    /**
+     * Gets the Unix timestamp of Monday of the starting week of this term.
+     * 
+     * @param integer $term The identifier of the term; see UoY_DateConstants
+     *                      for valid inputs.
+     * @param integer $year  The year of the given break.
+     *      
+     * @return integer The Unix timestamp of the requested Monday.
+     */
+    protected static function getMondayOfTermStart($term, $year)
+    {
+        assert('is_integer($term)');
+        assert('$term >= UoY_DateConstants::TERM_LOWER_BOUND');
+        assert('$term <= UoY_DateConstants::TERM_UPPER_BOUND');
+        
+        // Get all term dates for the year.
+        $xml = UoY_Cache::cacheHandle();
+        $resource = UoY_Cache::getYearResource($xml, $year);
+        
+        // Get the term date for the given term.
+        switch ($term) {
+        case UoY_DateConstants::TERM_AUTUMN:
+            $termIndex = 0;
+            break;
+        case UoY_DateConstants::TERM_SPRING:
+            $termIndex = 1;
+            break;
+        case UoY_DateConstants::TERM_SUMMER:
+            $termIndex = 2;
+            break;
+        default:
+            assert('false');
+        }
+        
+        $terms = $resource[ 0 ]->term;
+        $term = $terms[ $termIndex ];
+        assert('$term !== false && $term !== null');
+        
+        // For term dates, we want the Monday of the start week.
+        return self::floorMonday($term->start);
+    }
+
+    
+    /**
+     * Gets the Unix timestamp of Monday of the starting week of this break; 
+     * that is, the Monday after the preceding term end.
+     * 
+     * @param integer $break The identifier of the break; see UoY_DateConstants
+     *                       for valid inputs.
+     * @param integer $year  The year of the given break.
+     * 
+     * @return integer The Unix timestamp of the requested Monday.
+     */
+    protected static function getMondayOfBreakStart($break, $year)
+    {
+        assert('is_integer($break)');
+        assert('$break >= UoY_DateConstants::BREAK_LOWER_BOUND');
+        assert('$break <= UoY_DateConstants::BREAK_UPPER_BOUND');
+        
+        // Get all term dates for the year.
+        $xml = UoY_Cache::cacheHandle();
+        $resource = UoY_Cache::getYearResource($xml, $year);
+        assert('$resource !== false && $resource !== null');
+        
+        // Get the term date for the given term.
+        switch ($break) {
+        case UoY_DateConstants::BREAK_WINTER:
+            $breakIndex = 0;
+            break;
+        case UoY_DateConstants::BREAK_SPRING:
+            $breakIndex = 1;
+            break;
+        case UoY_DateConstants::BREAK_SUMMER:
+            $breakIndex = 2;
+            break;
+        default:
+            assert('false');
+        }
+        
+        assert('isset($resource[ 0 ])');
+        $terms = $resource[ 0 ]->term;
+        $term = $terms[ $breakIndex ];
+        assert('$term !== false && $term !== null');
+        
+        /* For term dates, we want the Monday of the week after the term end.
+         * This could be specified as the Monday of the term end week plus one
+         * week.
+         */
+        return strtotime("+1 week", self::floorMonday($term->end));
+    }
+    
+    
+    /**
+     * Gets the week difference between two timestamps ($a - $b).  $b must be
+     * greater than or equal to $a, and must be within one year of it.
+     *
+     * This function is used to get the relative week to a term start.
+     * 
+     * @param integer a  The timestamp to subtract from.
+     * @param integer b  The timestamp to subtract.
+     * 
+     * @return integer The week difference.
+     */
+    protected function getWeekDifference($a, $b)
+    {
+        assert('$b <= $a');
+        assert('intval(date("Y", $a)) - intval(date("Y", $b)) <= 1');
+      
+        $aWeeks = intval(date('W', $a));
+        $bWeeks = intval(date('W', $b));
+
+        /* If $a is in the year following $a, then we must add the number of
+         * weeks in the year in which $b exists.
+         */
+        $year = intval(date('Y', $b));
+        $weeksInYear = self::getWeeksInYear($year);
+
+        $difference = $aWeeks - $bWeeks;
+   
+        if ($difference < 0) {
+            $difference += $weeksInYear;
+        }
+    
+        assert('$difference >= 0');
+
+        return $difference;
+    }
+  
+    /**
+     * Returns the number of weeks in the given calendar year - either
+     * 52 or 53.
+     *
+     * @param integer $year - the year (calendar year, not academic).
+     *
+     * @return the number of weeks in the given year.
+     * 
+     * @throws an InvalidArgumentException if the year is not an integer.
+     */
+    protected function getWeeksInYear($year)
+    {
+        if (is_integer($year) == false) {
+            throw new InvalidArgumentException('Year not an integer.');
+        }
+
+        // Calculate by working out the week the 28th of December, which is 
+        // always in the last week of the year, falls within.
+        $endOfYear = strtotime($year . '-12-28');
+        $weeksInYear = intval(date('W', $endOfYear));
+
+        assert('$weeksInYear === 52 or $weeksInYear === 53');
+        return $weeksInYear;
     }
 }
-
 ?>
